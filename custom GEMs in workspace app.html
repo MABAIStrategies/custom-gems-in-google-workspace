@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Startup Workspace GEMs Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Chosen Palette: Warm Neutrals (Stone/Amber) -->
+    <!-- Application Structure Plan: A dynamic, dashboard-style SPA featuring a persistent side navigation menu (top on mobile) and a dynamic main content area. This structure allows users to logically explore GEMs by department without losing context. An initial "Overview" tab provides a high-level summary of workspace integration. Clicking a department loads specific GEM cards, containing use-cases, instructions, and interactive visualizations of productivity impact. This is highly usable as it chunks complex prompt data into digestible, domain-specific views. -->
+    <!-- Visualization & Content Choices: Overview -> Goal: Show Workspace distribution -> Viz: Doughnut Chart (Chart.js) -> Justification: Clearly illustrates the platform split (Docs vs Sheets). Department Views -> Goal: Show time saved -> Viz: Bar Chart (Chart.js) -> Justification: Direct comparison of manual vs. GEM-assisted task times. NO SVG or Mermaid used; relying entirely on Canvas and Unicode for iconography. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #fafaf9; /* stone-50 */
+            color: #292524; /* stone-800 */
+        }
+        
+        /* Required Chart Container Styling */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        @media (min-width: 768px) {
+            .chart-container { height: 350px; }
+        }
+        
+        /* Custom Scrollbar for Pre tags */
+        pre::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
+        }
+        pre::-webkit-scrollbar-track {
+            background: #f5f5f4; 
+            border-radius: 4px;
+        }
+        pre::-webkit-scrollbar-thumb {
+            background: #d6d3d1; 
+            border-radius: 4px;
+        }
+        pre::-webkit-scrollbar-thumb:hover {
+            background: #a8a29e; 
+        }
+
+        .nav-item.active {
+            background-color: #fef3c7; /* amber-100 */
+            color: #b45309; /* amber-700 */
+            border-right: 4px solid #b45309;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col md:flex-row overflow-hidden">
+
+    <!-- Navigation Sidebar -->
+    <nav class="w-full md:w-64 bg-white border-r border-stone-200 flex flex-col shadow-sm z-10 flex-shrink-0 transition-all duration-300">
+        <div class="p-6 border-b border-stone-100">
+            <h1 class="text-xl font-bold text-stone-800 tracking-tight flex items-center gap-2">
+                <span class="text-2xl">✦</span> GEM<span class="text-amber-600 font-medium">Workspace</span>
+            </h1>
+            <p class="text-xs text-stone-500 mt-1">10 Custom AI Directives for Startups</p>
+        </div>
+        <div class="flex-1 overflow-y-auto py-4">
+            <ul class="space-y-1" id="nav-list">
+                <li><button data-target="overview" class="nav-item active w-full text-left px-6 py-3 text-sm font-medium text-stone-600 hover:bg-stone-50 transition-colors flex items-center gap-3"><span>👁️</span> Overview</button></li>
+                <li class="px-6 pt-4 pb-2 text-xs font-semibold text-stone-400 uppercase tracking-wider">Departments</li>
+                <li><button data-target="sales" class="nav-item w-full text-left px-6 py-3 text-sm font-medium text-stone-600 hover:bg-stone-50 transition-colors flex items-center gap-3"><span>🤝</span> Sales</button></li>
+                <li><button data-target="finances" class="nav-item w-full text-left px-6 py-3 text-sm font-medium text-stone-600 hover:bg-stone-50 transition-colors flex items-center gap-3"><span>📈</span> Finances</button></li>
+                <li><button data-target="operations" class="nav-item w-full text-left px-6 py-3 text-sm font-medium text-stone-600 hover:bg-stone-50 transition-colors flex items-center gap-3"><span>⚙️</span> Operations</button></li>
+                <li><button data-target="legal" class="nav-item w-full text-left px-6 py-3 text-sm font-medium text-stone-600 hover:bg-stone-50 transition-colors flex items-center gap-3"><span>⚖️</span> Legal</button></li>
+                <li><button data-target="marketing" class="nav-item w-full text-left px-6 py-3 text-sm font-medium text-stone-600 hover:bg-stone-50 transition-colors flex items-center gap-3"><span>📢</span> Marketing</button></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto p-6 md:p-10 relative" id="main-content">
+        <!-- Content gets injected here via JS -->
+    </main>
+
+    <!-- Application Logic -->
+    <script>
+        // --- Data Storage ---
+        const appData = {
+            overview: {
+                title: "Workspace GEM Integration Overview",
+                description: "This dashboard curates 10 highly impactful custom GEMs (Generative AI Macros/Instructions) designed specifically for startup founders and operators. These are engineered to function directly within Google Workspace applications, maximizing productivity without requiring users to switch contexts.",
+                chartData: {
+                    labels: ['Google Sheets', 'Google Docs', 'Google Slides', 'Google Drive'],
+                    data: [5, 4, 1, 0]
+                }
+            },
+            departments: {
+                sales: {
+                    title: "Sales Department",
+                    icon: "🤝",
+                    description: "Supercharge your pipeline generation and lead management. These GEMs automate time-consuming outreach drafting and objectify the lead qualification process.",
+                    gems: [
+                        {
+                            name: "Cold Outreach Sequence Generator",
+                            platform: "Google Docs",
+                            addon: "Turn 'Canvas Mode' ON for iterative side-by-side editing.",
+                            instructions: `ROLE: You are an elite B2B sales copywriter specializing in high-conversion cold email outreach.\n\nTASK: Generate a 3-step cold email sequence tailored to the target persona provided in the document. \n\nCONSTRAINTS:\n- Email 1: The 'Hook'. Max 75 words. Focus strictly on a specific pain point. End with a soft CTA (e.g., "Open to exploring this?").\n- Email 2: The 'Value Add'. Max 100 words. Provide a specific, actionable insight or micro-case study relevant to their industry. \n- Email 3: The 'Breakup'. Max 50 words. Professional and permission-based closure.\n- Tone: Conversational, non-salesy, peer-to-peer.\n\nINPUT TO AWAIT: Wait for me to paste the Target Persona Profile and our Value Proposition before generating.`,
+                            impactData: { manual: 45, gem: 5, label: "Drafting Sequence (Mins)" }
+                        },
+                        {
+                            name: "Lead Scoring Matrix Analyzer",
+                            platform: "Google Sheets",
+                            addon: "Use 'Data Extraction' extension if parsing external LinkedIn URLs.",
+                            instructions: `ROLE: You are a meticulous Sales Operations Analyst.\n\nTASK: Evaluate the leads listed in this sheet and assign a dynamic Lead Score (1-100) based on ideal customer profile (ICP) fit.\n\nINSTRUCTIONS:\n1. Read columns A through E (Company Size, Industry, Tech Stack, Funding Round, Recent News).\n2. Apply the following weighting:\n   - Industry match (B2B SaaS) = +30 pts\n   - Funding Round (Series A/B) = +25 pts\n   - Company Size (50-200) = +20 pts\n   - Tech Stack compatibility = +15 pts\n   - Hiring signals in News = +10 pts\n3. Output the final score in Column F.\n4. Output a 1-sentence justification for the score in Column G.`,
+                            impactData: { manual: 120, gem: 10, label: "Scoring 50 Leads (Mins)" }
+                        }
+                    ]
+                },
+                finances: {
+                    title: "Finances Department",
+                    icon: "📈",
+                    description: "Maintain a crystal-clear view of your startup's financial health. These tools turn raw transaction data into predictive insights and categorized ledgers.",
+                    gems: [
+                        {
+                            name: "Burn Rate & Runway Predictor",
+                            platform: "Google Sheets",
+                            addon: "Link to real-time bank CSV export via Google Drive.",
+                            instructions: `ROLE: You are a startup fractional CFO.\n\nTASK: Analyze the monthly cash outflow data in this spreadsheet to calculate current burn rate and project financial runway.\n\nINSTRUCTIONS:\n1. Identify all recurring operational expenses in the past 90 days.\n2. Calculate the average monthly Gross Burn Rate.\n3. Subtract average monthly revenue to determine Net Burn Rate.\n4. Take the 'Current Cash Balance' located in Cell B2 and divide it by the Net Burn Rate.\n5. Output a bolded summary at the bottom of the sheet stating: "Estimated Runway: X Months".\n6. Flag any expense categories that have grown by more than 15% month-over-month.`,
+                            impactData: { manual: 90, gem: 5, label: "Runway Calculation (Mins)" }
+                        },
+                        {
+                            name: "Automated Expense Categorizer",
+                            platform: "Google Sheets",
+                            addon: "Set to trigger 'On Edit' for new rows.",
+                            instructions: `ROLE: You are a precise forensic accountant and bookkeeper.\n\nTASK: Categorize raw bank transaction descriptions into standard IRS-compliant business expense buckets.\n\nINSTRUCTIONS:\n1. Read the raw transaction text in Column C.\n2. Map the transaction to one of the following exact categories: [Software Subscriptions, Travel & Meals, Legal & Professional, Payroll, Marketing/Ads, Office Supplies, Unknown].\n3. Place the category in Column D.\n4. If the transaction description contains keywords like 'Stripe', 'AWS', or 'GCP', automatically tag Column E as 'COGS' (Cost of Goods Sold).\n5. If the category is 'Unknown', highlight the cell in yellow for human review.`,
+                            impactData: { manual: 180, gem: 15, label: "Categorizing 500 Txns (Mins)" }
+                        }
+                    ]
+                },
+                operations: {
+                    title: "Operations Department",
+                    icon: "⚙️",
+                    description: "Streamline internal processes and team scaling. Operations GEMs focus on standardizing deployments and improving team onboarding experiences.",
+                    gems: [
+                        {
+                            name: "SOP & Onboarding Workflow Creator",
+                            platform: "Google Docs",
+                            addon: "Turn 'Canvas Mode' ON. Export directly to Google Sites.",
+                            instructions: `ROLE: You are an expert Operations Manager specializing in remote team scaling.\n\nTASK: Transform rough bullet points into a comprehensive Standard Operating Procedure (SOP) and new-hire onboarding checklist.\n\nINSTRUCTIONS:\n1. I will provide a messy list of tasks associated with a specific role.\n2. Structure the output into three sections:\n   - Phase 1: Day 1-5 (Setup & Context)\n   - Phase 2: Week 2-4 (Shadowing & First Tasks)\n   - Phase 3: Month 2+ (Autonomy)\n3. For each task, write a brief 'Why this matters' sentence.\n4. Format the final output with interactive checkboxes (using Google Docs checklist feature syntax) so the new hire can use it immediately.`,
+                            impactData: { manual: 120, gem: 15, label: "Drafting an SOP (Mins)" }
+                        },
+                        {
+                            name: "Project Resource Allocator",
+                            platform: "Google Sheets",
+                            addon: "Integrate with Google Calendar add-on if possible.",
+                            instructions: `ROLE: You are an Agile Scrum Master and Resource Planner.\n\nTASK: Optimize the assignment of team members to upcoming projects based on their current bandwidth and skill sets.\n\nINSTRUCTIONS:\n1. Read 'Team Roster' tab (Name, Skillset, Current Capacity %).\n2. Read 'Project Backlog' tab (Project Name, Required Skills, Estimated Hours).\n3. In the 'Allocation Plan' tab, suggest matchups. Assign a team member to a project only if their skill matches and adding the Estimated Hours does not push their Capacity over 90%.\n4. If a project cannot be staffed, highlight the project row in Red and output "Requires Freelancer/Hire" in the notes column.`,
+                            impactData: { manual: 60, gem: 10, label: "Weekly Allocation (Mins)" }
+                        }
+                    ]
+                },
+                legal: {
+                    title: "Legal Department",
+                    icon: "⚖️",
+                    description: "Mitigate risk and simplify dense legalese. While not a replacement for a lawyer, these GEMs help founders understand contracts and compliance faster.",
+                    gems: [
+                        {
+                            name: "Contract Clause Red-Flagger",
+                            platform: "Google Docs",
+                            addon: "Use 'Comment Mode' integration to leave margin notes.",
+                            instructions: `ROLE: You are a sharp, founder-friendly corporate paralegal.\n\nTASK: Review the provided contract text and summarize complex clauses while flagging potential risks for a startup founder.\n\nINSTRUCTIONS:\n1. Scan the document for clauses related to: Indemnification, Exclusivity, Termination for Convenience, and IP Ownership.\n2. Do NOT rewrite the contract. Instead, add a summary paragraph at the top of the document.\n3. In the summary, list any 'Red Flags' (e.g., perpetual exclusivity, unusual liability caps) in bullet points.\n4. Translate dense legalese into plain, 8th-grade English for quick comprehension by the founder.\nDisclaimer to include in output: "This is AI analysis, not formal legal advice."`,
+                            impactData: { manual: 90, gem: 10, label: "Contract Review (Mins)" }
+                        },
+                        {
+                            name: "Jurisdictional Compliance Checklist",
+                            platform: "Google Sheets",
+                            addon: "None. Standard spreadsheet generation.",
+                            instructions: `ROLE: You are a SaaS compliance officer.\n\nTASK: Generate a dynamic checklist of potential legal, tax, and data privacy requirements based on a startup's operating jurisdictions.\n\nINSTRUCTIONS:\n1. Await input: I will provide the HQ State, and top 3 states/countries of operation.\n2. Generate a 4-column table: [Requirement Category, Description, Severity/Fines, Action Item].\n3. Categories must cover: Sales Tax Nexus thresholds, Data Privacy (e.g., CCPA/GDPR triggers), and basic Employment law postings.\n4. Prioritize requirements based on standard SaaS business models.\n5. Leave a blank column at the end titled 'Completed (Y/N)' for internal tracking.`,
+                            impactData: { manual: 180, gem: 15, label: "Initial Compliance Audit (Mins)" }
+                        }
+                    ]
+                },
+                marketing: {
+                    title: "Marketing Department",
+                    icon: "📢",
+                    description: "Maximize visibility with lean resources. These GEMs automate content generation across channels and analyze marketing spend effectiveness.",
+                    gems: [
+                        {
+                            name: "Multi-Channel Content Calendar Builder",
+                            platform: "Google Sheets",
+                            addon: "Use 'Workspace Automation' to create Docs from Sheet rows.",
+                            instructions: `ROLE: You are a creative Director of Content Marketing.\n\nTASK: Take a single piece of core content (e.g., a blog post summary) and repurpose it into a 2-week multi-channel content calendar.\n\nINSTRUCTIONS:\n1. I will paste the 'Core Theme' or 'Blog Summary' into Cell A2.\n2. Generate 10 rows of content spanning different platforms: 3x LinkedIn Posts, 4x X/Twitter Threads, 2x Newsletter Intro blurbs, 1x Short Video Script outline.\n3. Columns should be: [Date, Platform, Content Type, Full Draft Copy, Suggested Image/Graphic Idea].\n4. Tone: Engaging, value-first, authoritative. Tailor the formatting to the specific platform (e.g., use emojis and spacing for LinkedIn, short punchy lines for X).`,
+                            impactData: { manual: 240, gem: 20, label: "2-Week Content Plan (Mins)" }
+                        },
+                        {
+                            name: "Ad Spend & ROI Analyzer",
+                            platform: "Google Sheets",
+                            addon: "Connect to Google Analytics export if available.",
+                            instructions: `ROLE: You are a data-driven Growth Marketer.\n\nTASK: Analyze cross-platform ad performance data and recommend budget reallocation to maximize Return on Ad Spend (ROAS).\n\nINSTRUCTIONS:\n1. Read the data table containing columns: [Platform, Campaign Name, Spend, Impressions, Clicks, Conversions, Revenue Generated].\n2. Calculate Customer Acquisition Cost (CAC) and ROAS for every campaign row.\n3. At the bottom of the sheet, provide a "Recommendation Engine" output.\n4. The output must state: "Scale Budget On: [Campaign X]" (highest ROAS), and "Kill/Pause: [Campaign Y]" (highest CAC/lowest ROAS).\n5. Provide a 2-sentence rationale for the reallocation strategy based strictly on the numbers.`,
+                            impactData: { manual: 60, gem: 5, label: "Weekly Ad Analysis (Mins)" }
+                        }
+                    ]
+                }
+            }
+        };
+
+        // --- State Management ---
+        let currentChartInstance = null;
+        let currentView = 'overview';
+
+        // --- DOM Elements ---
+        const mainContent = document.getElementById('main-content');
+        const navButtons = document.querySelectorAll('.nav-item');
+
+        // --- Render Functions ---
+
+        function renderOverview() {
+            const data = appData.overview;
+            
+            mainContent.innerHTML = `
+                <div class="max-w-5xl mx-auto animation-fade-in">
+                    <header class="mb-10">
+                        <h2 class="text-3xl font-bold text-stone-800 mb-4">${data.title}</h2>
+                        <p class="text-lg text-stone-600 leading-relaxed">${data.description}</p>
+                    </header>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div class="bg-white p-8 rounded-2xl shadow-sm border border-stone-200">
+                            <h3 class="text-xl font-semibold mb-6 flex items-center gap-2"><span>🧩</span> Workspace Platform Distribution</h3>
+                            <div class="chart-container h-64">
+                                <canvas id="overviewChart"></canvas>
+                            </div>
+                            <p class="text-sm text-stone-500 mt-6 text-center">Breakdown of the 10 custom GEMs by target Google Workspace application.</p>
+                        </div>
+                        
+                        <div class="flex flex-col justify-center space-y-6">
+                            <div class="bg-amber-50 p-6 rounded-xl border border-amber-100">
+                                <h4 class="font-bold text-amber-800 mb-2">Why Google Workspace?</h4>
+                                <p class="text-stone-700 text-sm">By embedding custom AI instructions directly into Sheets and Docs, startups eliminate the "copy-paste tax" of moving data between external AI chat windows and operational documents.</p>
+                            </div>
+                            <div class="bg-stone-100 p-6 rounded-xl border border-stone-200">
+                                <h4 class="font-bold text-stone-800 mb-2">How to use this dashboard</h4>
+                                <p class="text-stone-600 text-sm">Select a department from the navigation menu to view specific GEMs. Copy the <strong>Custom Instructions</strong> and paste them into the "Help me write" or corresponding AI prompt box within your designated Google Workspace app.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            initOverviewChart(data.chartData);
+        }
+
+        function renderDepartment(deptKey) {
+            const dept = appData.departments[deptKey];
+            if (!dept) return;
+
+            let gemsHtml = '';
+            dept.gems.forEach((gem, index) => {
+                // Determine icon based on platform
+                let platformIcon = "📄"; // Default
+                if(gem.platform.includes("Sheets")) platformIcon = "📊";
+                if(gem.platform.includes("Slides")) platformIcon = "🎞️";
+
+                gemsHtml += `
+                    <div class="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden flex flex-col mb-8 animation-fade-in" style="animation-delay: ${index * 0.1}s;">
+                        <div class="border-b border-stone-100 p-6 bg-stone-50/50 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+                            <div>
+                                <h3 class="text-xl font-bold text-stone-800">${gem.name}</h3>
+                                <div class="flex items-center gap-3 mt-2">
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white border border-stone-200 text-stone-600 shadow-sm">
+                                        <span>${platformIcon}</span> ${gem.platform}
+                                    </span>
+                                    <span class="text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded font-medium">Add-on: ${gem.addon}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            <div class="lg:col-span-2 space-y-4">
+                                <h4 class="text-sm font-bold uppercase tracking-wider text-stone-400">Custom System Instructions</h4>
+                                <div class="relative group">
+                                    <pre class="bg-stone-800 text-stone-100 p-5 rounded-xl overflow-x-auto text-sm font-mono leading-relaxed whitespace-pre-wrap">${gem.instructions}</pre>
+                                    <button onclick="copyText(this)" class="absolute top-3 right-3 bg-stone-700 hover:bg-stone-600 text-white text-xs px-3 py-1.5 rounded-md transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">Copy</button>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-stone-50 rounded-xl p-5 border border-stone-100 flex flex-col justify-center">
+                                <h4 class="text-sm font-bold text-center text-stone-600 mb-4">Productivity Impact Estimate</h4>
+                                <div class="chart-container" style="height: 200px;">
+                                    <canvas id="chart-${deptKey}-${index}"></canvas>
+                                </div>
+                                <p class="text-xs text-center text-stone-500 mt-2 italic">${gem.impactData.label}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            mainContent.innerHTML = `
+                <div class="max-w-6xl mx-auto animation-fade-in">
+                    <header class="mb-10 flex items-start gap-4">
+                        <div class="text-4xl bg-white p-3 rounded-xl shadow-sm border border-stone-100">${dept.icon}</div>
+                        <div>
+                            <h2 class="text-3xl font-bold text-stone-800 mb-2">${dept.title}</h2>
+                            <p class="text-lg text-stone-600 max-w-3xl">${dept.description}</p>
+                        </div>
+                    </header>
+                    <div class="space-y-8">
+                        ${gemsHtml}
+                    </div>
+                </div>
+            `;
+
+            // Initialize charts for this department
+            dept.gems.forEach((gem, index) => {
+                initImpactChart(`chart-${deptKey}-${index}`, gem.impactData);
+            });
+        }
+
+        // --- Chart Logic ---
+
+        function destroyCurrentChart() {
+            // Because department views have multiple charts, we need to track them differently
+            // if we were storing them globally. For this SPA, since we overwrite innerHTML, 
+            // the canvas elements are destroyed, but Chart.js might hold listeners.
+            // We'll rely on canvas destruction for the multiple charts, but explicitly
+            // destroy the overview chart if it exists.
+            if (currentChartInstance) {
+                currentChartInstance.destroy();
+                currentChartInstance = null;
+            }
+        }
+
+        function initOverviewChart(data) {
+            destroyCurrentChart();
+            const ctx = document.getElementById('overviewChart').getContext('2d');
+            
+            // Register plugin for centered text
+            const centerTextPlugin = {
+                id: 'centerText',
+                beforeDraw: function(chart) {
+                    if (chart.config.type !== 'doughnut') return;
+                    var width = chart.width,
+                        height = chart.height,
+                        ctx = chart.ctx;
+
+                    ctx.restore();
+                    var fontSize = (height / 114).toFixed(2);
+                    ctx.font = "bold " + fontSize + "em Inter, sans-serif";
+                    ctx.textBaseline = "middle";
+                    ctx.fillStyle = "#292524";
+
+                    var text = "10 GEMs",
+                        textX = Math.round((width - ctx.measureText(text).width) / 2),
+                        textY = height / 2;
+
+                    ctx.fillText(text, textX, textY);
+                    ctx.save();
+                }
+            };
+
+            currentChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        data: data.data,
+                        backgroundColor: [
+                            '#10b981', // Emerald for Sheets
+                            '#3b82f6', // Blue for Docs
+                            '#f59e0b', // Amber for Slides
+                            '#8b5cf6'  // Purple for Drive
+                        ],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { family: 'Inter' } } },
+                        tooltip: { backgroundColor: 'rgba(41, 37, 36, 0.9)', padding: 12, cornerRadius: 8 }
+                    }
+                },
+                plugins: [centerTextPlugin]
+            });
+        }
+
+        function initImpactChart(canvasId, data) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Manual', 'With GEM'],
+                    datasets: [{
+                        label: 'Time Taken',
+                        data: [data.manual, data.gem],
+                        backgroundColor: [
+                            '#d6d3d1', // stone-300
+                            '#b45309'  // amber-700
+                        ],
+                        borderRadius: 6,
+                        barPercentage: 0.6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y', // Horizontal bar chart
+                    scales: {
+                        x: { beginAtZero: true, grid: { display: false }, ticks: { font: { family: 'Inter' } } },
+                        y: { grid: { display: false }, ticks: { font: { family: 'Inter', weight: 'bold' } } }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.raw + ' mins';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- Interaction Logic ---
+
+        function handleNavigation(e) {
+            const targetBtn = e.target.closest('.nav-item');
+            if (!targetBtn) return;
+
+            // Update active states
+            navButtons.forEach(btn => btn.classList.remove('active'));
+            targetBtn.classList.add('active');
+
+            const targetView = targetBtn.dataset.target;
+            
+            // Route to view
+            if (targetView === 'overview') {
+                renderOverview();
+            } else {
+                renderDepartment(targetView);
+            }
+            
+            // Scroll to top on mobile
+            mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Simple copy to clipboard function
+        window.copyText = function(btn) {
+            const pre = btn.previousElementSibling;
+            const text = pre.innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = btn.innerText;
+                btn.innerText = 'Copied!';
+                btn.classList.add('bg-emerald-600');
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.classList.remove('bg-emerald-600');
+                }, 2000);
+            });
+        }
+
+        // --- Initialization ---
+        document.getElementById('nav-list').addEventListener('click', handleNavigation);
+        
+        // Add minimal CSS for animations dynamically to keep file clean
+        const style = document.createElement('style');
+        style.innerHTML = `
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            .animation-fade-in {
+                animation: fadeIn 0.4s ease-out forwards;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Initial Load
+        renderOverview();
+
+    </script>
+</body>
+</html>
